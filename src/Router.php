@@ -54,7 +54,7 @@ class Router
      * @param RouteCollection    $collection
      * @param ContainerInterface $container
      */
-    public function __construct(RouteCollection $collection, ContainerInterface $container)
+    public function __construct(RouteCollection $collection, ContainerInterface $container = null)
     {
         $this->routes = $collection;
 
