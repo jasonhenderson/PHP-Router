@@ -18,6 +18,7 @@
 namespace PHPRouter;
 
 use Exception;
+use Interop\Container\ContainerInterface;
 use PHPRouter\RouteCollection;
 
 /**
@@ -45,9 +46,15 @@ class Router
     private $basePath = '';
 
     /**
-     * @param RouteCollection $collection
+     * @var ContainerInterface
      */
-    public function __construct(RouteCollection $collection)
+    private $container;
+
+    /**
+     * @param RouteCollection    $collection
+     * @param ContainerInterface $container
+     */
+    public function __construct(RouteCollection $collection, ContainerInterface $container)
     {
         $this->routes = $collection;
 
@@ -57,6 +64,8 @@ class Router
                 $this->namedRoutes[$name] = $route;
             }
         }
+
+        $this->container = $container;
     }
 
     /**
