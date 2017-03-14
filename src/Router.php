@@ -14,7 +14,11 @@
  *
  * This software consists of voluntary contributions made by many individuals
  * and is licensed under the MIT license.
+ *
+ * @package ftweb
  */
+
+
 namespace PHPRouter;
 
 use Exception;
@@ -25,6 +29,7 @@ use Fig\Http\Message\RequestMethodInterface;
  */
 class Router
 {
+
     /**
      * RouteCollection that holds all Route objects
      *
@@ -34,17 +39,21 @@ class Router
 
     /**
      * Array to store named routes in, used for reverse routing.
+     *
      * @var array
      */
     private $namedRoutes = array();
 
     /**
      * The base REQUEST_URI. Gets prepended to all route url's.
+     *
      * @var string
      */
     private $basePath = '';
 
     /**
+     *
+     *
      * @param RouteCollection $collection
      */
     public function __construct(RouteCollection $collection)
@@ -59,17 +68,22 @@ class Router
         }
     }
 
+
     /**
      * Set the base _url - gets prepended to all route _url's.
-     * @param $basePath
+     *
+     * @param unknown $basePath
      */
     public function setBasePath($basePath)
     {
         $this->basePath = rtrim($basePath, '/');
     }
 
+
     /**
      * Matches the current request against mapped routes
+     *
+     * @return
      */
     public function matchCurrentRequest()
     {
@@ -89,23 +103,24 @@ class Router
         return $this->match($requestUrl, $requestMethod);
     }
 
+
     /**
      * Match given request _url and request method and see if a route has been defined for it
      * If so, return route's target
      * If called multiple times
      *
-     * @param string $requestUrl
-     * @param string $requestMethod
      *
+     * @param string  $requestUrl
+     * @param string  $requestMethod
      * @return bool|Route
      */
     public function match($requestUrl, $requestMethod = RequestMethodInterface::METHOD_GET)
     {
         $currentDir = dirname($_SERVER['SCRIPT_NAME']);
 
-        foreach ($this->routes->all() as $routes) {
+        foreach ($this->routes->all() as $route) {
             // compare server request method with route's allowed http methods
-            if (! in_array($requestMethod, (array)$routes->getMethods(), true)) {
+            if (! in_array($requestMethod, (array)$route->getMethods(), true)) {
                 continue;
             }
 
@@ -113,21 +128,23 @@ class Router
                 $requestUrl = str_replace($currentDir, '', $requestUrl);
             }
 
-            $route = rtrim($routes->getRegex(), '/');
-            $pattern = '@^' . preg_quote($this->basePath) . $route . '/?$@i';
+            $trimmedRoute = rtrim($route->getRegex(), '/');
+            $pattern = '@^' . $this->basePath . $trimmedRoute . '/?$@i';
             if (!preg_match($pattern, $requestUrl, $matches)) {
+                // echo '3 <br />';
                 continue;
             }
 
+            array_shift($matches);
+
             $params = array();
 
-            if (preg_match_all('/:([\w-%]+)/', $routes->getUrl(), $argument_keys)) {
+            if (preg_match_all('/:([\w-\.%]+)/', $route->getUrl(), $argument_keys)) {
                 // grab array with matches
                 $argument_keys = $argument_keys[1];
 
                 // check arguments number
-
-                if(count($argument_keys) !== (count($matches) -1)) {
+                if (count($argument_keys) !== count($matches)) {
                     continue;
                 }
 
@@ -139,23 +156,23 @@ class Router
                 }
             }
 
-            $routes->setParameters($params);
-            $routes->dispatch();
-
-            return $routes;
+            $route->setParameters($params);
+            $route->dispatch();
+            return $route;
         }
 
         return false;
     }
 
+
     /**
      * Reverse route a named route
      *
-     * @param $routeName
-     * @param array $params Optional array of parameters to use in URL
      *
      * @throws Exception
      *
+     * @param unknown $routeName
+     * @param array   $params    (optional) Optional array of parameters to use in URL
      * @return string The url to the route
      */
     public function generate($routeName, array $params = array())
@@ -165,7 +182,7 @@ class Router
             throw new Exception("No route with the name $routeName has been found.");
         }
 
-        /** @var \PHPRouter\Route $route */
+        /* @var \PHPRouter\Route $route */
         $route = $this->namedRoutes[$routeName];
         $url = $route->getUrl();
 
@@ -185,21 +202,31 @@ class Router
         return $url;
     }
 
+
     /**
      * Create routes by array, and return a Router object
      *
-     * @param array $config provide by Config::loadFromFile()
+     * @param array   $config provide by Config::loadFromFile()
      * @return Router
      */
     public static function parseConfig(array $config)
     {
         $collection = new RouteCollection();
-        foreach ($config['routes'] as $name => $route) {
-            $collection->attachRoute(new Route($route[0], array(
-                '_controller' => str_replace('.', '::', $route[1]),
-                'methods' => $route[2],
-                'name' => $name
-            )));
+        foreach ($config['routes'] as $route) {
+            $r = new Route($route['path'], [
+                '_controller' => str_replace('.', '::', $route['controller']),
+                'methods' => explode(',', $route['method'])
+                ]);
+
+            if (isset($route['params'])) {
+                $filters = [];
+                foreach ($route['params'] as $filter => $pattern) {
+                    $filters[] = [$filter => ':' . $pattern];
+                }
+                $r->setFilters($filters, true);
+            }
+
+            $collection->attachRoute($r);
         }
 
         $router = new Router($collection);

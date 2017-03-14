@@ -51,4 +51,21 @@ final class Config
 
         return Yaml::parse(file_get_contents($yamlFile));
     }
+    
+    public static function loadFromJsonFile($jsonFile)
+    {
+        if (!is_file($jsonFile)) {
+            throw new InvalidArgumentException(sprintf('The file %s does not exist!', $jsonFile));
+        }
+
+        $jsonString = file_get_contents($jsonFile);
+        $data = json_decode($jsonString, true);
+
+        if ($data === null
+            && json_last_error() !== JSON_ERROR_NONE) {
+            throw new InvalidArgumentException(sprintf('The file %s is not valid JSON!', $jsonFile));
+        }
+
+        return $data;
+    }
 }

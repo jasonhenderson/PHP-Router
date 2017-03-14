@@ -21,14 +21,17 @@ use Fig\Http\Message\RequestMethodInterface;
 
 class Route
 {
+
     /**
      * URL of this Route
+     *
      * @var string
      */
     private $url;
 
     /**
      * Accepted HTTP methods for this route.
+     *
      * @var string[]
      */
     private $methods = array(
@@ -40,43 +43,52 @@ class Route
 
     /**
      * Target for this route, can be anything.
+     *
      * @var mixed
      */
     private $target;
 
     /**
      * The name of this route, used for reversed routing
+     *
      * @var string
      */
     private $name;
 
     /**
      * Custom parameter filters for this route
+     *
      * @var array
      */
     private $filters = array();
 
     /**
      * Array containing parameters passed through request URL
+     *
      * @var array
      */
     private $parameters = array();
 
     /**
      * Set named parameters to target method
+     *
      * @example [ [0] => [ ["link_id"] => "12312" ] ]
      * @var bool
      */
     private $parametersByName;
 
     /**
+     *
+     *
      * @var array
      */
     private $config;
 
     /**
-     * @param       $resource
-     * @param array $config
+     *
+     *
+     * @param unknown $resource
+     * @param array   $config
      */
     public function __construct($resource, array $config)
     {
@@ -85,86 +97,174 @@ class Route
         $this->methods = isset($config['methods']) ? (array) $config['methods'] : array();
         $this->target  = isset($config['target']) ? $config['target'] : null;
         $this->name    = isset($config['name']) ? $config['name'] : null;
-        $this->parameters = isset($config['parameters']) ? $config['parameters'] : array();
+        if (isset($config['filters'])) {
+            $this->setFilters($config['filters'],  true);
+        }
     }
 
+
+    /**
+     *
+     *
+     * @return
+     */
     public function getUrl()
     {
         return $this->url;
     }
 
+
+    /**
+     *
+     *
+     * @param string  $url
+     */
     public function setUrl($url)
     {
         $url = (string)$url;
 
         // make sure that the URL is suffixed with a forward slash
-        if (substr($url, -1) !== '/') {
+        if (substr($url, - 1) !== '/') {
             $url .= '/';
         }
 
         $this->url = $url;
     }
 
+
+    /**
+     *
+     *
+     * @return
+     */
     public function getTarget()
     {
         return $this->target;
     }
 
+
+    /**
+     *
+     *
+     * @param string  $target
+     */
     public function setTarget($target)
     {
         $this->target = $target;
     }
 
+
+    /**
+     *
+     *
+     * @return
+     */
     public function getMethods()
     {
         return $this->methods;
     }
 
+
+    /**
+     *
+     *
+     * @param array   $methods
+     */
     public function setMethods(array $methods)
     {
         $this->methods = $methods;
     }
 
+
+    /**
+     *
+     *
+     * @return
+     */
     public function getName()
     {
         return $this->name;
     }
 
+
+    /**
+     *
+     *
+     * @param string  $name
+     */
     public function setName($name)
     {
         $this->name = (string)$name;
     }
 
+
+    /**
+     *
+     *
+     * @param array   $filters
+     * @param string  $parametersByName (optional)
+     */
     public function setFilters(array $filters, $parametersByName = false)
     {
         $this->filters          = $filters;
         $this->parametersByName = $parametersByName;
     }
 
+
+    /**
+     *
+     *
+     * @return
+     */
     public function getRegex()
     {
-        return preg_replace_callback('/(:\w+)/', array(&$this, 'substituteFilter'), $this->url);
+        return preg_replace_callback('/(:\w+)/', array( & $this, 'substituteFilter'), $this->url);
     }
 
+
+    /**
+     *
+     *
+     * @param string  $matches
+     * @return
+     */
     private function substituteFilter($matches)
     {
         if (isset($matches[1], $this->filters[$matches[1]])) {
             return $this->filters[$matches[1]];
         }
 
-        return '([\w-%]+)';
+        return '([\w-\.%]+)';
     }
 
+
+    /**
+     *
+     *
+     * @return
+     */
     public function getParameters()
     {
         return $this->parameters;
     }
 
+
+    /**
+     *
+     *
+     * @param array   $parameters
+     */
     public function setParameters(array $parameters)
     {
-        $this->parameters = array_merge($this->parameters, $parameters);
+        $this->parameters = $parameters;
     }
 
+
+    /**
+     *
+     *
+     * @return
+     */
     public function dispatch()
     {
         $action = explode('::', $this->config['_controller']);
@@ -176,13 +276,22 @@ class Route
         $this->action = !empty($action[1]) && trim($action[1]) !== '' ? $action[1] : null;
 
         if (!is_null($this->action)) {
-            $instance = new $action[0];
-            call_user_func_array(array($instance, $this->action), $this->parameters);
+            // TODO: remove once autoloading
+            require_once CONTROLLERS_PATH . '/' . $action[0] . '.php';
+
+            $controller = new $action[0];
+            call_user_func_array(array($controller, $this->action), $this->parameters);
         } else {
-            $instance = new $action[0]($this->parameters);
+            $controller = new $action[0]($this->parameters);
         }
     }
 
+
+    /**
+     *
+     *
+     * @return
+     */
     public function getAction()
     {
         return $this->action;
